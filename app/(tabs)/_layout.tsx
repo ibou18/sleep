@@ -79,11 +79,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: "Explorer",
+          title: "Info",
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol
               size={focused ? 26 : 24}
-              name="safari.fill"
+              name="info.circle"
               color={color}
             />
           ),
