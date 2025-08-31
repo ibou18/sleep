@@ -1,32 +1,136 @@
-import type { PropsWithChildren, ReactElement } from 'react';
-import { StyleSheet } from 'react-native';
+import type { PropsWithChildren, ReactElement } from "react";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedRef,
   useAnimatedStyle,
   useScrollViewOffset,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 
-import { ThemedView } from '@/components/ThemedView';
-import { useBottomTabOverflow } from '@/components/ui/TabBarBackground';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
+import { useAppTheme } from "@/context/ThemeContext";
+import { useThemeColor } from "@/hooks/useThemeColor";
+
+// Imports conditionnels pour les icônes (à installer si nécessaire)
+// import { Ionicons } from '@expo/vector-icons';
+// import { LucideIcon } from 'lucide-react-native';
 
 const HEADER_HEIGHT = 250;
 
+interface ActionButton {
+  icon: any; // Pour supporter les icônes SF Symbols
+  onPress: () => void;
+  label?: string;
+}
+
 type Props = PropsWithChildren<{
-  headerImage: ReactElement;
-  headerBackgroundColor: { dark: string; light: string };
+  headerImage?: ReactElement;
+  headerIcon?: {
+    name: string;
+    library: "ionicons" | "lucide";
+    size?: number;
+    color?: string;
+  };
+  headerBackgroundColor?: { dark: string; light: string };
+  title?: string | ReactElement;
+  subtitle?: string | ReactElement;
+  actionButtons?: ActionButton[];
+  showThemeToggle?: boolean;
 }>;
 
 export default function ParallaxScrollView({
   children,
   headerImage,
+  headerIcon,
   headerBackgroundColor,
+  title,
+  subtitle,
+  actionButtons = [],
+  showThemeToggle = false,
 }: Props) {
-  const colorScheme = useColorScheme() ?? 'light';
+  const { theme, toggleTheme } = useAppTheme();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollOffset = useScrollViewOffset(scrollRef);
   const bottom = useBottomTabOverflow();
+
+  const surface = useThemeColor({}, "surface");
+  const accent = useThemeColor({}, "accent");
+  const muted = useThemeColor({}, "muted");
+
+  // Extract color string from accent object if it's an object
+  const accentColor =
+    typeof accent === "object" && "color" in accent ? accent.color : accent;
+
+  // Couleur de fond par défaut basée sur le thème
+  const defaultHeaderColor = theme === "dark" ? "#1e293b" : "#e2e8f0";
+  const headerBgColor = headerBackgroundColor
+    ? headerBackgroundColor[theme]
+    : defaultHeaderColor;
+
+  // Fonction pour rendre le contenu du header
+  const renderHeaderContent = () => {
+    if (headerImage) {
+      return headerImage;
+    }
+
+    if (headerIcon) {
+      const iconSize = headerIcon.size || 80;
+      const iconColor =
+        headerIcon.color || (theme === "dark" ? "#ffffff" : "#000000");
+
+      // Conteneur centré pour l'icône
+      return (
+        <View style={styles.headerIconContainer}>
+          {headerIcon.library === "ionicons" ? (
+            // Placeholder pour Ionicons - nécessite @expo/vector-icons
+            <View
+              style={[
+                styles.iconPlaceholder,
+                {
+                  width: iconSize,
+                  height: iconSize,
+                  backgroundColor: iconColor + "20",
+                  borderRadius: iconSize / 2,
+                },
+              ]}
+            >
+              <ThemedText
+                style={[styles.iconPlaceholderText, { color: iconColor }]}
+              >
+                📱
+              </ThemedText>
+            </View>
+          ) : headerIcon.library === "lucide" ? (
+            // Placeholder pour Lucide - nécessite lucide-react-native
+            <View
+              style={[
+                styles.iconPlaceholder,
+                {
+                  width: iconSize,
+                  height: iconSize,
+                  backgroundColor: iconColor + "20",
+                  borderRadius: iconSize / 2,
+                },
+              ]}
+            >
+              <ThemedText
+                style={[styles.iconPlaceholderText, { color: iconColor }]}
+              >
+                {/* <MoonStar /> */}
+              </ThemedText>
+            </View>
+          ) : null}
+        </View>
+      );
+    }
+
+    // Contenu par défaut si aucune image ni icône
+    return null;
+  };
+
   const headerAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -38,9 +142,23 @@ export default function ParallaxScrollView({
           ),
         },
         {
-          scale: interpolate(scrollOffset.value, [-HEADER_HEIGHT, 0, HEADER_HEIGHT], [2, 1, 1]),
+          scale: interpolate(
+            scrollOffset.value,
+            [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
+            [2, 1, 1]
+          ),
         },
       ],
+    };
+  });
+
+  const titleOpacityStyle = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(
+        scrollOffset.value,
+        [0, HEADER_HEIGHT / 2, HEADER_HEIGHT],
+        [1, 0.8, 0]
+      ),
     };
   });
 
@@ -50,14 +168,83 @@ export default function ParallaxScrollView({
         ref={scrollRef}
         scrollEventThrottle={16}
         scrollIndicatorInsets={{ bottom }}
-        contentContainerStyle={{ paddingBottom: bottom }}>
+        contentContainerStyle={{ paddingBottom: bottom }}
+      >
         <Animated.View
           style={[
             styles.header,
-            { backgroundColor: headerBackgroundColor[colorScheme] },
+            { backgroundColor: headerBgColor },
             headerAnimatedStyle,
-          ]}>
-          {headerImage}
+          ]}
+        >
+          {renderHeaderContent()}
+
+          {/* Overlay avec titre et actions */}
+          <View style={styles.headerOverlay}>
+            {/* Boutons d'action en haut à droite */}
+            <View style={styles.actionButtonsContainer}>
+              {actionButtons.map((button, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={button.onPress}
+                  style={[
+                    styles.actionButton,
+                    { backgroundColor: surface + "CC" },
+                  ]}
+                >
+                  <IconSymbol
+                    name={button.icon}
+                    size={20}
+                    color={accentColor}
+                  />
+                </TouchableOpacity>
+              ))}
+
+              {showThemeToggle && (
+                <TouchableOpacity
+                  onPress={toggleTheme}
+                  style={[
+                    styles.actionButton,
+                    { backgroundColor: surface + "CC" },
+                  ]}
+                >
+                  <ThemedText style={styles.themeIcon}>
+                    {theme === "dark" ? "☀️" : "🌙"}
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Titre et sous-titre */}
+            {(title || subtitle) && (
+              <Animated.View style={[styles.titleContainer, titleOpacityStyle]}>
+                {title && (
+                  <View style={styles.titleWrapper}>
+                    {typeof title === "string" ? (
+                      <ThemedText style={styles.headerTitle}>
+                        {title}
+                      </ThemedText>
+                    ) : (
+                      title
+                    )}
+                  </View>
+                )}
+                {subtitle && (
+                  <View style={styles.subtitleWrapper}>
+                    {typeof subtitle === "string" ? (
+                      <ThemedText
+                        style={[styles.headerSubtitle, { color: muted as any }]}
+                      >
+                        {subtitle}
+                      </ThemedText>
+                    ) : (
+                      subtitle
+                    )}
+                  </View>
+                )}
+              </Animated.View>
+            )}
+          </View>
         </Animated.View>
         <ThemedView style={styles.content}>{children}</ThemedView>
       </Animated.ScrollView>
@@ -71,12 +258,89 @@ const styles = StyleSheet.create({
   },
   header: {
     height: HEADER_HEIGHT,
-    overflow: 'hidden',
+    overflow: "hidden",
+  },
+  headerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "space-between",
+    padding: 20,
+    paddingTop: 50, // Pour éviter la status bar
+  },
+  actionButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  actionButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  themeIcon: {
+    fontSize: 18,
+  },
+  titleContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  titleWrapper: {
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  subtitleWrapper: {
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 8,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    textAlign: "center",
+    opacity: 0.9,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   content: {
     flex: 1,
     padding: 32,
     gap: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
+  },
+  headerIconContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  iconPlaceholder: {
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  iconPlaceholderText: {
+    fontSize: 32,
+    fontWeight: "bold",
   },
 });

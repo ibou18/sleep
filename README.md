@@ -48,3 +48,14 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Sleep Calculator
+
+Un nouvel onglet "Sleep" a été ajouté. Il permet de :
+
+- Saisir une heure de coucher et obtenir des heures conseillées pour se réveiller en complétant 3 à 6 cycles de sommeil.
+- Saisir une heure de réveil et obtenir des heures conseillées pour se coucher afin d'achever 3 à 6 cycles.
+
+Formats acceptés : `HH:mm` ou `HHmm` (ex. `23:00` ou `2300`).
+
+Ouvrez l'application et sélectionnez l'onglet "Sleep" dans la barre d'onglets pour l'utiliser.
