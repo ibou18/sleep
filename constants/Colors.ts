@@ -11,7 +11,7 @@ export const Colors = {
     surface: "#ffffff", // white
     tint: "#2563eb", // blue-600
     muted: "#64748b", // slate-400
-    accent: "#3a40edff", // violet-600
+    accent: "#0657c0ff", // violet-600
     success: "#16a34a", // green-600
     danger: "#dc2626", // red-600
     icon: "#475569",
@@ -27,10 +27,10 @@ export const Colors = {
   dark: {
     text: "#e6eef8", // near white
     background: "#0d1d3dff", // slate-950
-    surface: "#0c2e65ff",
+    surface: "#08295dff",
     tint: "#60a5fa", // blue-400
     muted: "#94a3b8",
-    accent: "#a78bfa",
+    accent: "#f57b56ff",
     success: "#4ade80",
     danger: "#f97316",
     icon: "#9aa6b2",

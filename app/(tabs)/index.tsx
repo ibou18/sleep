@@ -1,9 +1,7 @@
 import ParallaxScrollView from "@/components/ParallaxScrollView";
 import SleepCalculator from "@/components/SleepCalculator";
-import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
-import { Colors } from "@/constants/Colors";
 import { useAppTheme } from "@/context/ThemeContext";
 import React from "react";
 import { StyleSheet } from "react-native";
@@ -17,30 +15,12 @@ export default function SleepScreen() {
       headerImage={
         <IconSymbol
           size={310}
-          color="#808080"
-          name="clock"
+          color="#e27f4a"
+          name="moon.circle.fill"
           style={styles.headerImage}
         />
       }
-      title={
-        <ThemedText
-          style={{
-            fontSize: 38,
-            fontWeight: "bold",
-            color: Colors[theme].text,
-            textShadowColor:
-              typeof Colors[theme].textShadow === "string"
-                ? Colors[theme].textShadow
-                : Colors[theme].textShadow.color,
-            textShadowOffset: { width: 0, height: 2 },
-            textShadowRadius: 4,
-            lineHeight: 52,
-          }}
-        >
-          💤 Sleep Calculator
-        </ThemedText>
-      }
-      subtitle="Optimisez vos cycles de sommeil"
+      // subtitle={<ThemedText>Optimisez vos cycles de sommeil</ThemedText>}
       showThemeToggle={true}
       //   actionButtons={[
       //     {
