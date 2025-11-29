@@ -5,20 +5,13 @@ import { ExternalLink } from "@/components/ExternalLink";
 import ParallaxScrollView from "@/components/ParallaxScrollView";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { IconSymbol } from "@/components/ui/IconSymbol";
 
 export default function SleepEducationScreen() {
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: "#E8F4FD", dark: "#1A2332" }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#4A90E2"
-          name="moon.stars.fill"
-          style={styles.headerImage}
-        />
-      }
+      headerBackgroundColor={{ light: "#f9f9f9", dark: "#091e48" }}
+      showThemeToggle={true}
+      showWeather={true}
     >
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Guide du Sommeil</ThemedText>

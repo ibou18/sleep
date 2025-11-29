@@ -105,7 +105,8 @@ export default function SleepCalculator() {
     currentTime.setHours(now.getHours(), now.getMinutes(), 0, 0);
 
     const newResults: SleepResult[] = [];
-    const cycleRange = mode === "bedtime" ? [3, 4, 5, 6] : [6, 5, 4, 3];
+    // Afficher dans l'ordre décroissant : du meilleur (6 cycles) au moins bon (3 cycles)
+    const cycleRange = [6, 5, 4, 3];
 
     cycleRange.forEach((i) => {
       const minutes = sleepLatency + i * cycles;
@@ -193,6 +194,28 @@ export default function SleepCalculator() {
   useEffect(() => {
     fadeAnim.setValue(0);
   }, [results, fadeAnim]);
+
+  // Recalcul automatique lors du changement de mode
+  useEffect(() => {
+    // Ajuster l'heure par défaut selon le mode
+    if (mode === "waketime") {
+      // Mode réveil : définir l'heure à maintenant + 5h
+      const now = new Date();
+      const wakeTime = addMinutes(now, 5 * 60);
+      setInput(formatTime(wakeTime));
+    } else {
+      // Mode coucher : définir l'heure actuelle
+      const now = new Date();
+      setInput(formatTime(now));
+    }
+
+    // Recalculer automatiquement si des résultats existent déjà
+    if (results.length > 0) {
+      // Petit délai pour permettre la mise à jour de l'input
+      setTimeout(() => calculate(), 50);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   return (
     <ThemedView style={styles.container}>

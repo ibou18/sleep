@@ -1,5 +1,10 @@
 import type { PropsWithChildren, ReactElement } from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Animated, {
   interpolate,
   useAnimatedRef,
@@ -9,17 +14,45 @@ import Animated, {
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import WeatherWidget from "@/components/WeatherWidget";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { useAppTheme } from "@/context/ThemeContext";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import * as Location from "expo-location";
+import { useFocusEffect } from "expo-router";
+import React, { useRef, useState } from "react";
 
 // Imports conditionnels pour les icônes (à installer si nécessaire)
 // import { Ionicons } from '@expo/vector-icons';
 // import { LucideIcon } from 'lucide-react-native';
 
 const HEADER_HEIGHT = 160;
+
+// Configuration météo
+const WEATHER_API_KEY =
+  process.env.EXPO_PUBLIC_WEATHER_API_KEY || "7b854612fd5f633cb2b6fb9f79c24bce";
+const USE_FALLBACK_API = !WEATHER_API_KEY;
+const MIN_REFRESH_DELAY = 60 * 1000; // 1 minute
+
+interface WeatherData {
+  temperature: number;
+  description: string;
+  city: string;
+  icon: string;
+  humidity?: number;
+  windSpeed?: number;
+}
+
+const getWeatherEmoji = (description: string): string => {
+  const desc = description.toLowerCase();
+  if (desc.includes("clear") || desc.includes("sun")) return "☀️";
+  if (desc.includes("cloud")) return "☁️";
+  if (desc.includes("rain")) return "🌧️";
+  if (desc.includes("storm")) return "⛈️";
+  if (desc.includes("snow")) return "❄️";
+  if (desc.includes("mist") || desc.includes("fog")) return "🌫️";
+  return "🌤️";
+};
 
 interface ActionButton {
   icon: any; // Pour supporter les icônes SF Symbols
@@ -63,6 +96,11 @@ export default function ParallaxScrollView({
   const accent = useThemeColor({}, "accent");
   const muted = useThemeColor({}, "muted");
 
+  // État météo
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const lastRefreshRef = useRef<number>(0);
+
   // Extract color string from accent object if it's an object
   const accentColor =
     typeof accent === "object" && "color" in accent ? accent.color : accent;
@@ -73,8 +111,138 @@ export default function ParallaxScrollView({
     ? headerBackgroundColor[theme]
     : defaultHeaderColor;
 
+  // Fonction pour récupérer la météo
+  const fetchWeather = async () => {
+    try {
+      setWeatherLoading(true);
+      lastRefreshRef.current = Date.now();
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setWeatherLoading(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
+      let weatherData: WeatherData;
+
+      if (USE_FALLBACK_API) {
+        const response = await fetch(
+          `https://wttr.in/?lat=${latitude}&lon=${longitude}&format=j1&lang=fr`
+        );
+
+        if (!response.ok) throw new Error("Erreur API météo");
+
+        const data = await response.json();
+        weatherData = {
+          temperature: parseInt(data.current_condition[0].temp_C),
+          description: data.current_condition[0].weatherDesc[0].value,
+          city: data.nearest_area[0].areaName[0].value,
+          icon: getWeatherEmoji(data.current_condition[0].weatherDesc[0].value),
+          humidity: parseInt(data.current_condition[0].humidity),
+          windSpeed: parseInt(data.current_condition[0].windspeedKmph),
+        };
+      } else {
+        try {
+          const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${WEATHER_API_KEY}&units=metric&lang=fr`
+          );
+
+          if (!response.ok) {
+            throw new Error("OpenWeatherMap failed, using fallback");
+          }
+
+          const data = await response.json();
+          weatherData = {
+            temperature: Math.round(data.main.temp),
+            description: data.weather[0].description,
+            city: data.name,
+            icon: getWeatherEmoji(data.weather[0].description),
+            humidity: data.main.humidity,
+            windSpeed: Math.round(data.wind?.speed * 3.6),
+          };
+        } catch {
+          console.log("🔄 Fallback vers API wttr.in...");
+          const fallbackResponse = await fetch(
+            `https://wttr.in/?lat=${latitude}&lon=${longitude}&format=j1&lang=fr`
+          );
+
+          if (!fallbackResponse.ok) {
+            throw new Error("Les deux APIs météo ont échoué");
+          }
+
+          const fallbackData = await fallbackResponse.json();
+          weatherData = {
+            temperature: parseInt(fallbackData.current_condition[0].temp_C),
+            description: fallbackData.current_condition[0].weatherDesc[0].value,
+            city: fallbackData.nearest_area[0].areaName[0].value,
+            icon: getWeatherEmoji(
+              fallbackData.current_condition[0].weatherDesc[0].value
+            ),
+            humidity: parseInt(fallbackData.current_condition[0].humidity),
+            windSpeed: parseInt(
+              fallbackData.current_condition[0].windspeedKmph
+            ),
+          };
+        }
+      }
+
+      setWeather(weatherData);
+    } catch (err) {
+      console.error("❌ Erreur météo:", err);
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  // Rafraîchissement sur focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!showWeather) return;
+
+      const now = Date.now();
+      const timeSinceLastRefresh = now - lastRefreshRef.current;
+
+      if (timeSinceLastRefresh >= MIN_REFRESH_DELAY || !weather) {
+        console.log("🔄 Rafraîchissement météo (focus écran)");
+        fetchWeather();
+      }
+    }, [showWeather, weather])
+  );
+
   // Fonction pour rendre le contenu du header
   const renderHeaderContent = () => {
+    // Si météo activée, afficher l'icône météo en bas à gauche
+    if (showWeather && weather) {
+      return (
+        <View style={styles.weatherIconContainer}>
+          <View style={styles.weatherIconContent}>
+            {weatherLoading ? (
+              <ActivityIndicator size="small" color={accentColor} />
+            ) : (
+              <>
+                <ThemedText style={styles.weatherEmoji}>
+                  {weather.icon}
+                </ThemedText>
+                <View style={styles.weatherInfo}>
+                  <ThemedText style={styles.weatherTemp}>
+                    {weather.temperature}°
+                  </ThemedText>
+                  <ThemedText
+                    style={[styles.weatherCity, { color: muted as any }]}
+                  >
+                    {weather.city.split(",")[0]}
+                  </ThemedText>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      );
+    }
+
     if (headerImage) {
       return <View style={styles.headerImageWrapper}>{headerImage}</View>;
     }
@@ -84,11 +252,9 @@ export default function ParallaxScrollView({
       const iconColor =
         headerIcon.color || (theme === "dark" ? "#ffffff" : "#000000");
 
-      // Conteneur positionné en bas à gauche pour l'icône
       return (
         <View style={styles.headerIconContainer}>
           {headerIcon.library === "ionicons" ? (
-            // Placeholder pour Ionicons - nécessite @expo/vector-icons
             <View
               style={[
                 styles.iconPlaceholder,
@@ -107,7 +273,6 @@ export default function ParallaxScrollView({
               </ThemedText>
             </View>
           ) : headerIcon.library === "lucide" ? (
-            // Placeholder pour Lucide - nécessite lucide-react-native
             <View
               style={[
                 styles.iconPlaceholder,
@@ -130,7 +295,6 @@ export default function ParallaxScrollView({
       );
     }
 
-    // Contenu par défaut si aucune image ni icône
     return null;
   };
 
@@ -165,29 +329,6 @@ export default function ParallaxScrollView({
     };
   });
 
-  // Animation pour le widget météo (glassmorphism avec parallaxe)
-  const weatherAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: interpolate(
-        scrollOffset.value,
-        [0, HEADER_HEIGHT / 2, HEADER_HEIGHT],
-        [1, 0.85, 0.6]
-      ),
-      transform: [
-        {
-          translateY: interpolate(
-            scrollOffset.value,
-            [0, HEADER_HEIGHT],
-            [0, -15]
-          ),
-        },
-        {
-          scale: interpolate(scrollOffset.value, [0, HEADER_HEIGHT], [1, 0.95]),
-        },
-      ],
-    };
-  });
-
   return (
     <ThemedView style={styles.container}>
       <Animated.ScrollView
@@ -207,16 +348,7 @@ export default function ParallaxScrollView({
 
           {/* Overlay avec titre et actions */}
           <View style={styles.headerOverlay}>
-            {/* Widget météo centré horizontalement */}
-            {showWeather && (
-              <Animated.View
-                style={[styles.weatherContainer, weatherAnimatedStyle]}
-              >
-                <WeatherWidget compact={false} />
-              </Animated.View>
-            )}
-
-            {/* Boutons d'action en haut à droite */}
+            {/* Boutons d'action en haut à droite - zone de clic améliorée */}
             <View style={styles.actionButtonsContainer}>
               {actionButtons.map((button, index) => (
                 <TouchableOpacity
@@ -226,6 +358,8 @@ export default function ParallaxScrollView({
                     styles.actionButton,
                     { backgroundColor: surface + "CC" },
                   ]}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
                 >
                   <IconSymbol
                     name={button.icon}
@@ -242,6 +376,8 @@ export default function ParallaxScrollView({
                     styles.actionButton,
                     { backgroundColor: surface + "CC" },
                   ]}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
                 >
                   <ThemedText style={styles.themeIcon}>
                     {theme === "dark" ? "☀️" : "🌙"}
@@ -303,42 +439,73 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "space-between",
     padding: 20,
-    paddingTop: 50, // Pour éviter la status bar
+    paddingTop: 60, // Augmenté pour meilleure accessibilité
   },
-  weatherContainer: {
+  // Nouveau style pour l'icône météo en bas à gauche
+  weatherIconContainer: {
     position: "absolute",
-    top: 60, // Position sous la barre de statut
-    left: 0,
-    right: 0,
-    alignItems: "center", // Centre horizontalement
-    zIndex: 10,
-    paddingHorizontal: 20, // Padding pour éviter les bords
-    // Effet glassmorphism amélioré
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    bottom: 16,
+    left: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  weatherIconContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  weatherEmoji: {
+    fontSize: 56,
+    lineHeight: 64,
+    textAlign: "center",
+    minWidth: 64,
+    minHeight: 64,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  weatherInfo: {
+    justifyContent: "center",
+    gap: 0,
+  },
+  weatherTemp: {
+    fontSize: 28,
+    fontWeight: "bold",
+    lineHeight: 32,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  weatherCity: {
+    fontSize: 13,
+    fontWeight: "500",
+    opacity: 0.9,
+    textShadowColor: "rgba(0, 0, 0, 0.2)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   actionButtonsContainer: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    gap: 8,
+    alignItems: "flex-start",
+    gap: 10,
+    zIndex: 100, // Priorité maximale pour les boutons
   },
   actionButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 8,
   },
   themeIcon: {
-    fontSize: 18,
+    fontSize: 20,
   },
   titleContainer: {
     alignItems: "center",
