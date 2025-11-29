@@ -59,3 +59,22 @@ Un nouvel onglet "Sleep" a été ajouté. Il permet de :
 Formats acceptés : `HH:mm` ou `HHmm` (ex. `23:00` ou `2300`).
 
 Ouvrez l'application et sélectionnez l'onglet "Sleep" dans la barre d'onglets pour l'utiliser.
+
+## Widget Météo
+
+L'application affiche maintenant la météo en fonction de votre localisation dans le header de l'écran principal.
+
+### Configuration (Optionnelle)
+
+Par défaut, l'application utilise l'API gratuite `wttr.in`. Pour utiliser OpenWeatherMap (plus précise) :
+
+1. Créez un compte sur [OpenWeatherMap](https://openweathermap.org/api)
+2. Obtenez votre clé API gratuite
+3. Créez un fichier `.env` à la racine du projet :
+   ```
+   EXPO_PUBLIC_WEATHER_API_KEY=votre_cle_api_ici
+   ```
+
+### Permissions
+
+L'application demande la permission de localisation pour afficher la météo de votre région. Cette permission est nécessaire pour le bon fonctionnement du widget météo.

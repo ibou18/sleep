@@ -9,6 +9,7 @@ import Animated, {
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import WeatherWidget from "@/components/WeatherWidget";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { useAppTheme } from "@/context/ThemeContext";
@@ -18,7 +19,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 // import { Ionicons } from '@expo/vector-icons';
 // import { LucideIcon } from 'lucide-react-native';
 
-const HEADER_HEIGHT = 250;
+const HEADER_HEIGHT = 160;
 
 interface ActionButton {
   icon: any; // Pour supporter les icônes SF Symbols
@@ -39,6 +40,7 @@ type Props = PropsWithChildren<{
   subtitle?: string | ReactElement;
   actionButtons?: ActionButton[];
   showThemeToggle?: boolean;
+  showWeather?: boolean;
 }>;
 
 export default function ParallaxScrollView({
@@ -50,6 +52,7 @@ export default function ParallaxScrollView({
   subtitle,
   actionButtons = [],
   showThemeToggle = false,
+  showWeather = false,
 }: Props) {
   const { theme, toggleTheme } = useAppTheme();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
@@ -73,7 +76,7 @@ export default function ParallaxScrollView({
   // Fonction pour rendre le contenu du header
   const renderHeaderContent = () => {
     if (headerImage) {
-      return headerImage;
+      return <View style={styles.headerImageWrapper}>{headerImage}</View>;
     }
 
     if (headerIcon) {
@@ -81,7 +84,7 @@ export default function ParallaxScrollView({
       const iconColor =
         headerIcon.color || (theme === "dark" ? "#ffffff" : "#000000");
 
-      // Conteneur centré pour l'icône
+      // Conteneur positionné en bas à gauche pour l'icône
       return (
         <View style={styles.headerIconContainer}>
           {headerIcon.library === "ionicons" ? (
@@ -162,6 +165,29 @@ export default function ParallaxScrollView({
     };
   });
 
+  // Animation pour le widget météo (glassmorphism avec parallaxe)
+  const weatherAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(
+        scrollOffset.value,
+        [0, HEADER_HEIGHT / 2, HEADER_HEIGHT],
+        [1, 0.85, 0.6]
+      ),
+      transform: [
+        {
+          translateY: interpolate(
+            scrollOffset.value,
+            [0, HEADER_HEIGHT],
+            [0, -15]
+          ),
+        },
+        {
+          scale: interpolate(scrollOffset.value, [0, HEADER_HEIGHT], [1, 0.95]),
+        },
+      ],
+    };
+  });
+
   return (
     <ThemedView style={styles.container}>
       <Animated.ScrollView
@@ -181,6 +207,15 @@ export default function ParallaxScrollView({
 
           {/* Overlay avec titre et actions */}
           <View style={styles.headerOverlay}>
+            {/* Widget météo centré horizontalement */}
+            {showWeather && (
+              <Animated.View
+                style={[styles.weatherContainer, weatherAnimatedStyle]}
+              >
+                <WeatherWidget compact={false} />
+              </Animated.View>
+            )}
+
             {/* Boutons d'action en haut à droite */}
             <View style={styles.actionButtonsContainer}>
               {actionButtons.map((button, index) => (
@@ -270,6 +305,21 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 50, // Pour éviter la status bar
   },
+  weatherContainer: {
+    position: "absolute",
+    top: 60, // Position sous la barre de statut
+    left: 0,
+    right: 0,
+    alignItems: "center", // Centre horizontalement
+    zIndex: 10,
+    paddingHorizontal: 20, // Padding pour éviter les bords
+    // Effet glassmorphism amélioré
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
   actionButtonsContainer: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -325,8 +375,21 @@ const styles = StyleSheet.create({
     gap: 16,
     overflow: "hidden",
   },
+  headerImageWrapper: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    justifyContent: "flex-end",
+    alignItems: "flex-start",
+    paddingBottom: 0,
+    paddingLeft: 10,
+  },
   headerIconContainer: {
-    flex: 1,
+    position: "absolute",
+    bottom: 16,
+    left: 20,
     justifyContent: "center",
     alignItems: "center",
   },

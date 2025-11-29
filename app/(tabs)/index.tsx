@@ -7,14 +7,14 @@ import React from "react";
 import { StyleSheet } from "react-native";
 
 export default function SleepScreen() {
-  const { theme } = useAppTheme();
+  useAppTheme();
 
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: "#f9f9f9", dark: "#091e48" }}
       headerImage={
         <IconSymbol
-          size={310}
+          size={100}
           color="#e27f4a"
           name="moon.circle.fill"
           style={styles.headerImage}
@@ -22,18 +22,7 @@ export default function SleepScreen() {
       }
       // subtitle={<ThemedText>Optimisez vos cycles de sommeil</ThemedText>}
       showThemeToggle={true}
-      //   actionButtons={[
-      //     {
-      //       icon: "gear",
-      //       onPress: () => console.log("Settings pressed"),
-      //       label: "Settings",
-      //     },
-      //     {
-      //       icon: "star.fill",
-      //       onPress: () => console.log("Favorites pressed"),
-      //       label: "Favorites",
-      //     },
-      //   ]}
+      showWeather={true}
     >
       <ThemedView style={styles.content}>
         <SleepCalculator />
@@ -46,12 +35,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 0, flex: 1 },
   headerImage: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
+    // Le positionnement est géré par le wrapper dans ParallaxScrollView
   },
 });
